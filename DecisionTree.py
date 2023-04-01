@@ -5,34 +5,8 @@ import numpy as np
 target_attr = "class"
 
 
-def continue_to_categoric(examples, attributes):
-    print("DATASET CONTAINS CONTINUOUS VALUES, APPLYING QUANTILES TO CATEGORIZE IT")
-    for attribute in attributes:
-        if examples[attribute].dtype == "float64":
-            examples[attribute] = pd.qcut(
-                examples[attribute], 6, labels=False, duplicates="drop"
-            )
-    print("CATEGORIZED THE DATASET")
-    return examples
-
-
-def load_data(file_path, is_continuous):
-    # Read the CSV file into a pandas DataFrame
-    df = pd.read_csv(file_path)
-    # Split the DataFrame into examples and targets
-    examples = df.iloc[:, :-1]
-    targets = df.iloc[:, -1]
-    if is_continuous:
-        examples = continue_to_categoric(examples, examples.columns)
-        df.iloc[:, :-1] = continue_to_categoric(
-            df.iloc[:, :-1], df.iloc[:, :-1].columns
-        )
-    # Return the examples and targets as numpy arrays
-    return examples.to_numpy(), targets.to_numpy(), df
-
-
 class Node:
-    def __init__(self, attribute=None, label=None, is_binary=False):
+    def __init__(self, attribute=None, label=None):
         self.attribute = attribute  # attribute used for splitting
         self.label = label  # label for leaf nodes
         self.children = {}  # dictionary of child nodes
@@ -105,68 +79,3 @@ class DecisionTree:
             proportion = df_attr_counts[value] / len(df[attr])
             info_gain -= proportion * self.get_entropy(subset, target_attr)
         return info_gain
-
-
-def print_tree(node, data, attribute_names=None, indent=""):
-    if node.is_leaf:
-        print(f"{indent}Leaf class: {node.label}")
-        return
-    else:
-        print(f"{indent}{node.attribute}:")
-    for value, child_node in node.children.items():
-        print(f"{indent*5}  {value} -> ", end="")
-        print_tree(child_node, data, attribute_names, indent + "    ")
-
-
-"""REFACTORING NECESSARIO"""
-
-
-def get_class_counts(df, target_attr):
-    class_counts = {}
-    for value in df[target_attr]:
-        if value not in class_counts:
-            class_counts[value] = 0
-        class_counts[value] += 1
-    return class_counts
-
-
-def classify(instance, tree, data):
-    # Traverse the tree until a leaf node is reached
-    while not tree.is_leaf:
-        attribute_value = instance[tree.attribute]
-        if attribute_value not in tree.children:
-            # If the attribute value is not present in the tree,
-            # return the most common class label of the training data
-            return max(
-                get_class_counts(data, target_attr),
-                key=get_class_counts(data, target_attr).get,
-            )
-        tree = tree.children[attribute_value]
-    return tree.label
-
-
-def error_rate(tree, df):
-    # classify each example in the dataframe and compare with actual labels
-    predicted_labels = df.apply(lambda x: classify(x, tree, df), axis=1)
-    actual_labels = df["class"]
-    misclassified = (predicted_labels != actual_labels).sum()
-    return misclassified / len(df)
-
-
-def cross_validation(examples, k):
-    n = len(examples)
-    errs = 0
-    for i in range(k):
-        # split data into training and validation sets
-        start = int((i * n) / k)
-        end = int(((i + 1) * n) / k)
-        validation_set = examples.iloc[start:end]
-        training_set = pd.concat([examples.iloc[:start], examples.iloc[end:]])
-
-        # train a decision tree using the learner function
-        learner = DecisionTree(training_set, list(training_set)).tree
-
-        # compute error rate on validation set using the error_rate function
-        errs += error_rate(learner, validation_set)
-
-    return errs / k

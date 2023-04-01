@@ -1,5 +1,6 @@
 from DecisionTree import *
-
+from helper import *
+from crossValidation import *
 
 opz = int(input("Scegli il dataset che vuoi usare tra 1,2,3: "))
 
@@ -44,7 +45,6 @@ elif opz == 3:
         "class",
     ]
 
-print(df)
 Decision = DecisionTree(df, list(df.columns))
 print_tree(Decision.tree, df)
 print("Cross validation error: ", cross_validation(df, 10))
