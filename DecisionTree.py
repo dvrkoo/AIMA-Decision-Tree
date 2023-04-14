@@ -38,9 +38,14 @@ class DecisionTree:
         # check if examples is empty
         if examples.empty:
             return self.plurality_value(parent_examples)
+        # this case is added by me, if we have only 2 examples left we might be left with an unoptimal split
+        # it could happen that these 2 examples have identical values but different class and in that case
+        # the split won't be optimal and can lead to overfitting
+        if len(examples) == 2:
+            return self.plurality_value(parent_examples)
 
         # if all examples have the same classification return it
-        if examples["class"].nunique() == 1:
+        if len(examples["class"].unique()) == 1:
             leaf = Node(label=examples["class"].iloc[0])
             leaf.is_leaf = True
             return leaf
@@ -50,14 +55,16 @@ class DecisionTree:
 
         # A <- argmax(a € attributes)IMPORTANCE(a, examples)
         best_attr = self.choose_attribute(examples, target_attr)
+        # print(best_attr)
         decision_node = Node(attribute=best_attr)
         for value in examples[best_attr].unique():
+            # print(examples[best_attr], value)
             subset_df = examples[examples[best_attr] == value].drop(columns=best_attr)
+            # print("subset", subset_df)
             # recursively build the subtree using the subset of the dataset
             child_node = self.learn_decision_tree(
                 subset_df, list(subset_df.columns), examples
             )
-            # print(df.columns[value])
             decision_node.add_child(value, child_node)
 
         return decision_node
